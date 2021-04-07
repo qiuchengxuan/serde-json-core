@@ -1,83 +1,73 @@
+use core::fmt;
+
 use serde::ser;
 
-use crate::ser::{Error, Result, Serializer};
+use crate::ser::Serializer;
 
-pub struct SerializeStruct<'a, 'b> {
-    ser: &'a mut Serializer<'b>,
+pub struct SerializeStruct<'a, W: fmt::Write> {
+    serializer: &'a mut Serializer<W>,
     first: bool,
 }
 
-impl<'a, 'b: 'a> SerializeStruct<'a, 'b> {
-    pub(crate) fn new(ser: &'a mut Serializer<'b>) -> Self {
-        SerializeStruct { ser, first: true }
+impl<'a, W: fmt::Write> SerializeStruct<'a, W> {
+    pub(crate) fn new(serializer: &'a mut Serializer<W>) -> Self {
+        SerializeStruct { serializer, first: true }
     }
 }
 
-impl<'a, 'b: 'a> ser::SerializeStruct for SerializeStruct<'a, 'b> {
+impl<'a, W: fmt::Write> ser::SerializeStruct for SerializeStruct<'a, W> {
     type Ok = ();
-    type Error = Error;
+    type Error = fmt::Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> fmt::Result
     where
-        T: ser::Serialize,
+        T: ser::Serialize + ?Sized,
     {
         // XXX if `value` is `None` we not produce any output for this field
         if !self.first {
-            self.ser.push(b',')?;
+            self.serializer.char(',')?;
         }
         self.first = false;
 
-        self.ser.push(b'"')?;
-        self.ser.extend_from_slice(key.as_bytes())?;
-        self.ser.extend_from_slice(b"\":")?;
-
-        value.serialize(&mut *self.ser)?;
-
-        Ok(())
+        write!(self.serializer.0, "\"{}\":", key)?;
+        value.serialize(&mut *self.serializer)
     }
 
-    fn end(self) -> Result<Self::Ok> {
-        self.ser.push(b'}')?;
-        Ok(())
+    fn end(self) -> fmt::Result {
+        self.serializer.char('}')
     }
 }
 
-pub struct SerializeStructVariant<'a, 'b> {
-    ser: &'a mut Serializer<'b>,
+pub struct SerializeStructVariant<'a, W: fmt::Write> {
+    serializer: &'a mut Serializer<W>,
     first: bool,
 }
 
-impl<'a, 'b: 'a> SerializeStructVariant<'a, 'b> {
-    pub(crate) fn new(ser: &'a mut Serializer<'b>) -> Self {
-        SerializeStructVariant { ser, first: true }
+impl<'a, W: fmt::Write> SerializeStructVariant<'a, W> {
+    pub(crate) fn new(serializer: &'a mut Serializer<W>) -> Self {
+        SerializeStructVariant { serializer, first: true }
     }
 }
 
-impl<'a, 'b: 'a> ser::SerializeStructVariant for SerializeStructVariant<'a, 'b> {
+impl<'a, W: fmt::Write> ser::SerializeStructVariant for SerializeStructVariant<'a, W> {
     type Ok = ();
-    type Error = Error;
+    type Error = fmt::Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> fmt::Result
     where
-        T: ser::Serialize,
+        T: ser::Serialize + ?Sized,
     {
         // XXX if `value` is `None` we not produce any output for this field
         if !self.first {
-            self.ser.push(b',')?;
+            self.serializer.char(',')?;
         }
         self.first = false;
 
-        self.ser.push(b'"')?;
-        self.ser.extend_from_slice(key.as_bytes())?;
-        self.ser.extend_from_slice(b"\":")?;
-
-        value.serialize(&mut *self.ser)?;
-
-        Ok(())
+        write!(self.serializer.0, "\"{}\":", key)?;
+        value.serialize(&mut *self.serializer)
     }
 
-    fn end(self) -> Result<Self::Ok> {
-        self.ser.extend_from_slice(b"}}")?;
-        Ok(())
+    fn end(self) -> fmt::Result {
+        write!(self.serializer.0, "}}}}")
     }
 }

@@ -58,6 +58,9 @@
 #![deny(rust_2018_idioms)]
 #![deny(warnings)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
 pub mod de;
 pub mod ser;
@@ -65,9 +68,4 @@ pub mod ser;
 #[doc(inline)]
 pub use self::de::{from_slice, from_str};
 #[doc(inline)]
-pub use self::ser::{to_slice, to_string, to_vec};
-
-#[allow(deprecated)]
-unsafe fn uninitialized<T>() -> T {
-    core::mem::uninitialized()
-}
+pub use self::ser::to_fmt;

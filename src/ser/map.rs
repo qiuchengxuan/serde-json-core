@@ -1,45 +1,38 @@
+use core::fmt;
+
 use serde::ser;
 
-use crate::ser::{Error, Result, Serializer};
+use crate::ser::Serializer;
 
-pub struct SerializeMap<'a, 'b> {
-    ser: &'a mut Serializer<'b>,
+pub struct SerializeMap<'a, W: fmt::Write> {
+    serializer: &'a mut Serializer<W>,
     first: bool,
 }
 
-impl<'a, 'b: 'a> SerializeMap<'a, 'b> {
-    pub(crate) fn new(ser: &'a mut Serializer<'b>) -> Self {
-        SerializeMap { ser, first: true }
+impl<'a, W: fmt::Write> SerializeMap<'a, W> {
+    pub(crate) fn new(serializer: &'a mut Serializer<W>) -> Self {
+        SerializeMap { serializer, first: true }
     }
 }
 
-impl<'a, 'b: 'a> ser::SerializeMap for SerializeMap<'a, 'b> {
+impl<'a, W: fmt::Write> ser::SerializeMap for SerializeMap<'a, W> {
     type Ok = ();
-    type Error = Error;
+    type Error = fmt::Error;
 
-    fn end(self) -> Result<Self::Ok> {
-        self.ser.push(b'}')?;
-        Ok(())
+    fn end(self) -> fmt::Result {
+        self.serializer.char('}')
     }
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<()>
-    where
-        T: ser::Serialize,
-    {
+    fn serialize_key<T: ser::Serialize + ?Sized>(&mut self, key: &T) -> fmt::Result {
         if !self.first {
-            self.ser.push(b',')?;
+            self.serializer.char(',')?;
         }
         self.first = false;
-        key.serialize(&mut *self.ser)?;
-        self.ser.extend_from_slice(b":")?;
-        Ok(())
+        key.serialize(&mut *self.serializer)?;
+        self.serializer.char(':')
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<()>
-    where
-        T: ser::Serialize,
-    {
-        value.serialize(&mut *self.ser)?;
-        Ok(())
+    fn serialize_value<T: ser::Serialize + ?Sized>(&mut self, value: &T) -> fmt::Result {
+        value.serialize(&mut *self.serializer)
     }
 }

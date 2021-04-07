@@ -76,8 +76,8 @@ pub enum Error {
     CustomErrorWithMessage(heapless::String<heapless::consts::U64>),
 }
 
-#[cfg(feature = "std")]
-impl ::std::error::Error for Error {
+impl serde::de::StdError for Error {
+    #[cfg(feature = "std")]
     fn description(&self) -> &str {
         ""
     }
@@ -122,10 +122,7 @@ impl<'a> Deserializer<'a> {
     }
 
     fn end_map(&mut self) -> Result<()> {
-        match self
-            .parse_whitespace()
-            .ok_or(Error::EofWhileParsingObject)?
-        {
+        match self.parse_whitespace().ok_or(Error::EofWhileParsingObject)? {
             b'}' => {
                 self.eat_char();
                 Ok(())
@@ -156,10 +153,7 @@ impl<'a> Deserializer<'a> {
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
-        match self
-            .parse_whitespace()
-            .ok_or(Error::EofWhileParsingObject)?
-        {
+        match self.parse_whitespace().ok_or(Error::EofWhileParsingObject)? {
             b':' => {
                 self.eat_char();
                 Ok(())
@@ -235,9 +229,7 @@ impl<'a> Deserializer<'a> {
 // Flash, when targeting non 64-bit architectures
 macro_rules! deserialize_unsigned {
     ($self:ident, $visitor:ident, $uxx:ident, $visit_uxx:ident) => {{
-        let peek = $self
-            .parse_whitespace()
-            .ok_or(Error::EofWhileParsingValue)?;
+        let peek = $self.parse_whitespace().ok_or(Error::EofWhileParsingValue)?;
 
         match peek {
             b'-' => Err(Error::InvalidNumber),
@@ -270,10 +262,7 @@ macro_rules! deserialize_unsigned {
 
 macro_rules! deserialize_signed {
     ($self:ident, $visitor:ident, $ixx:ident, $visit_ixx:ident) => {{
-        let signed = match $self
-            .parse_whitespace()
-            .ok_or(Error::EofWhileParsingValue)?
-        {
+        let signed = match $self.parse_whitespace().ok_or(Error::EofWhileParsingValue)? {
             b'-' => {
                 $self.eat_char();
                 true
@@ -821,35 +810,17 @@ mod tests {
 
         // escaped " in the string content
         assert_eq!(crate::from_str(r#" "foo\"bar" "#), Ok((r#"foo\"bar"#, 12)));
-        assert_eq!(
-            crate::from_str(r#" "foo\\\"bar" "#),
-            Ok((r#"foo\\\"bar"#, 14))
-        );
-        assert_eq!(
-            crate::from_str(r#" "foo\"\"bar" "#),
-            Ok((r#"foo\"\"bar"#, 14))
-        );
+        assert_eq!(crate::from_str(r#" "foo\\\"bar" "#), Ok((r#"foo\\\"bar"#, 14)));
+        assert_eq!(crate::from_str(r#" "foo\"\"bar" "#), Ok((r#"foo\"\"bar"#, 14)));
         assert_eq!(crate::from_str(r#" "\"bar" "#), Ok((r#"\"bar"#, 9)));
         assert_eq!(crate::from_str(r#" "foo\"" "#), Ok((r#"foo\""#, 9)));
         assert_eq!(crate::from_str(r#" "\"" "#), Ok((r#"\""#, 6)));
 
         // non-excaped " preceded by backslashes
-        assert_eq!(
-            crate::from_str(r#" "foo bar\\" "#),
-            Ok((r#"foo bar\\"#, 13))
-        );
-        assert_eq!(
-            crate::from_str(r#" "foo bar\\\\" "#),
-            Ok((r#"foo bar\\\\"#, 15))
-        );
-        assert_eq!(
-            crate::from_str(r#" "foo bar\\\\\\" "#),
-            Ok((r#"foo bar\\\\\\"#, 17))
-        );
-        assert_eq!(
-            crate::from_str(r#" "foo bar\\\\\\\\" "#),
-            Ok((r#"foo bar\\\\\\\\"#, 19))
-        );
+        assert_eq!(crate::from_str(r#" "foo bar\\" "#), Ok((r#"foo bar\\"#, 13)));
+        assert_eq!(crate::from_str(r#" "foo bar\\\\" "#), Ok((r#"foo bar\\\\"#, 15)));
+        assert_eq!(crate::from_str(r#" "foo bar\\\\\\" "#), Ok((r#"foo bar\\\\\\"#, 17)));
+        assert_eq!(crate::from_str(r#" "foo bar\\\\\\\\" "#), Ok((r#"foo bar\\\\\\\\"#, 19)));
         assert_eq!(crate::from_str(r#" "\\" "#), Ok((r#"\\"#, 6)));
     }
 
@@ -860,14 +831,8 @@ mod tests {
             led: bool,
         }
 
-        assert_eq!(
-            crate::from_str(r#"{ "led": true }"#),
-            Ok((Led { led: true }, 15))
-        );
-        assert_eq!(
-            crate::from_str(r#"{ "led": false }"#),
-            Ok((Led { led: false }, 16))
-        );
+        assert_eq!(crate::from_str(r#"{ "led": true }"#), Ok((Led { led: true }, 15)));
+        assert_eq!(crate::from_str(r#"{ "led": false }"#), Ok((Led { led: false }, 16)));
     }
 
     #[test]
@@ -916,12 +881,7 @@ mod tests {
 
         assert_eq!(
             crate::from_str(r#"{ "temperature": -2.1e-3 }"#),
-            Ok((
-                Temperature {
-                    temperature: -2.1e-3
-                },
-                26
-            ))
+            Ok((Temperature { temperature: -2.1e-3 }, 26))
         );
 
         assert_eq!(
@@ -933,12 +893,7 @@ mod tests {
 
         assert_eq!(
             crate::from_str(r#"{ "temperature": -1e500 }"#),
-            Ok((
-                Temperature {
-                    temperature: f32::NEG_INFINITY
-                },
-                25
-            ))
+            Ok((Temperature { temperature: f32::NEG_INFINITY }, 25))
         );
 
         assert!(crate::from_str::<Temperature>(r#"{ "temperature": 1e1e1 }"#).is_err());
@@ -958,12 +913,7 @@ mod tests {
 
         assert_eq!(
             crate::from_str(r#"{ "description": "An ambient temperature sensor" }"#),
-            Ok((
-                Property {
-                    description: Some("An ambient temperature sensor"),
-                },
-                50
-            ))
+            Ok((Property { description: Some("An ambient temperature sensor") }, 50))
         );
 
         assert_eq!(
@@ -971,10 +921,7 @@ mod tests {
             Ok((Property { description: None }, 23))
         );
 
-        assert_eq!(
-            crate::from_str(r#"{}"#),
-            Ok((Property { description: None }, 2))
-        );
+        assert_eq!(crate::from_str(r#"{}"#), Ok((Property { description: None }, 2)));
     }
 
     #[test]
@@ -1044,10 +991,7 @@ mod tests {
         assert_eq!(crate::from_str(r#"[10, -20]"#), Ok((Xy(10, -20), 9)));
 
         // wrong number of args
-        assert_eq!(
-            crate::from_str::<Xy>(r#"[10]"#),
-            Err(crate::de::Error::CustomError)
-        );
+        assert_eq!(crate::from_str::<Xy>(r#"[10]"#), Err(crate::de::Error::CustomError));
         assert_eq!(
             crate::from_str::<Xy>(r#"[10, 20, 30]"#),
             Err(crate::de::Error::TrailingCharacters)

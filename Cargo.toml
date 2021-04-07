@@ -1,27 +1,24 @@
 [package]
-authors = ["Jorge Aparicio <jorge@japaric.io>"]
+authors = ["qiuchengxuan <qiuchengxuan@gmail.com>"]
 categories = ["no-std"]
 description = "serde-json for no_std programs"
-documentation = "https://docs.rs/serde-json-core"
 edition = "2018"
 keywords = ["serde", "json"]
 license = "MIT OR Apache-2.0"
-name = "serde-json-core"
+name = "serde-json-core-fmt"
 readme = "README.md"
-repository = "https://github.com/rust-embedded-community/serde-json-core"
-version = "0.2.0"
+repository = "https://github.com/qiuchengxuan/serde-json-core"
+version = "0.1.1"
 
 [dependencies]
-heapless = "0.5.6"
-ryu = "1.0.5"
+ryu = "1.0"
 
 [dependencies.serde]
 default-features = false
-version = "1.0.80"
+version = "1.0.125"
 
 [dev-dependencies]
-serde_derive = "1.0.80"
+serde_derive = "1.0"
 
 [features]
 custom-error-messages = []
-std = ["serde/std"]
